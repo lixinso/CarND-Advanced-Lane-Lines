@@ -31,43 +31,60 @@ if ret == True:
 '''
 
 # find chessboard corners
-objpoints = []
-imgpoints = []
-objp = np.zeros((ny*nx,3), np.float32)
-objp[:,:2] = np.mgrid[0:nx, 0:ny].T.reshape(-1,2)
 
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-ret, corners = cv2.findChessboardCorners(gray, (nx, ny), None)
+def test_find_chessboard_corners(img,show_img):
+    objpoints_tmp = []
+    imgpoints_tmp = []
 
-if ret == True:
-    imgpoints.append(corners)
-    objpoints.append(objp)
-    img = cv2.drawChessboardCorners(img, (nx, ny), corners, ret)
-    plt.imshow(img)
-    #plt.show()
-else:
-    print("ret == False")
+    objp = np.zeros((ny*nx,3), np.float32)
+    objp[:,:2] = np.mgrid[0:nx, 0:ny].T.reshape(-1,2)
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    ret, corners = cv2.findChessboardCorners(gray, (nx, ny), None)
+
+    if ret == True:
+        imgpoints_tmp.append(corners)
+        objpoints_tmp.append(objp)
+        if show_img:
+            img = cv2.drawChessboardCorners(img, (nx, ny), corners, ret)
+            plt.imshow(img)
+            plt.show()
+    else:
+        print("ret == False")
+
+    return objpoints_tmp, imgpoints_tmp
+
+objpoints, imgpoints = test_find_chessboard_corners(img,False)
 
 #camera calibration, undistort
-img_size = (img.shape[1], img.shape[0])
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
-dst = cv2.undistort(img, mtx, dist, None, mtx)
-dist_pickle = {}
-dist_pickle["mtx"] = mtx
-dist_pickle["dist"] = dist
-f, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
-ax1.imshow(img)
-ax1.set_title("Origin Image", fontsize=30)
-ax2.imshow(dst)
-ax2.set_title("Undistorted Image", fontsize=30)
-#plt.show()
+def test_calibration_undistort(img, show_img):
 
+    img_size = (img.shape[1], img.shape[0])
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
+    dst = cv2.undistort(img, mtx, dist, None, mtx)
+    dist_pickle = {}
+    dist_pickle["mtx"] = mtx
+    dist_pickle["dist"] = dist
+
+    if show_img:
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+
+        ax1.imshow(img)
+        ax1.set_title("Origin Image", fontsize=30)
+        ax2.imshow(dst)
+        ax2.set_title("Undistorted Image", fontsize=30)
+        plt.show()
+
+    return dst,mtx,dist
+
+dst,mtx,dist = test_calibration_undistort(img,False)
 img = dst
 
 
 # warp
-def warp(img):
+def warp(img, draw_img=False):
     img_size = (img.shape[1], img.shape[0])
     print(img_size)
     src = np.float32([[152,172],[1206,184],[262,638],[1064,626]])
@@ -78,50 +95,52 @@ def warp(img):
     M = cv2.getPerspectiveTransform(src,dst)
     warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
 
+    if draw_img:
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+        ax1.set_title('Source Image')
+        ax1.imshow(img)
+        ax2.set_title('Warped image')
+        ax2.imshow(warped)
+        plt.show()
+
     return warped
 
-warped_im = warp(img)
-f, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
-ax1.set_title('Source Image')
-ax1.imshow(img)
-ax2.set_title('Warped image')
-ax2.imshow(warped_im)
-#plt.show()
+warped_im = warp(img, False)
+
 
 #color and gradient
-test_image = mpimg.imread("test_images/test1.jpg")
-hls = cv2.cvtColor(test_image, cv2.COLOR_RGB2HLS)
-s_channel = hls[:,:,2]
-gray = cv2.cvtColor(test_image, cv2.COLOR_RGB2GRAY)
-sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
-abs_sobelx = np.absolute(sobelx)
-scaled_sobel = np.uint8(255*abs_sobelx / np.max(abs_sobelx))
-thresh_min = 20
-thresh_max = 100
-sxbinary = np.zeros_like(scaled_sobel)
-sxbinary[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
-s_thresh_min =170
-s_thresh_max = 255
-s_binary = np.zeros_like(s_channel)
-s_binary[(s_channel >= s_thresh_min) & (s_channel <= s_thresh_max)] = 1
+def color_and_gradient():
 
-color_binary = np.dstack((np.zeros_like(sxbinary), sxbinary, s_binary))
-combined_binary = np.zeros_like(sxbinary)
-combined_binary[(s_binary==1) | (sxbinary == 1)] = 1
+    test_image = mpimg.imread("test_images/test1.jpg")
+    hls = cv2.cvtColor(test_image, cv2.COLOR_RGB2HLS)
+    s_channel = hls[:,:,2]
+    gray = cv2.cvtColor(test_image, cv2.COLOR_RGB2GRAY)
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+    abs_sobelx = np.absolute(sobelx)
+    scaled_sobel = np.uint8(255*abs_sobelx / np.max(abs_sobelx))
+    thresh_min = 20
+    thresh_max = 100
+    sxbinary = np.zeros_like(scaled_sobel)
+    sxbinary[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
+    s_thresh_min =170
+    s_thresh_max = 255
+    s_binary = np.zeros_like(s_channel)
+    s_binary[(s_channel >= s_thresh_min) & (s_channel <= s_thresh_max)] = 1
 
-f, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
-ax1.set_title("stacked threshold")
-ax1.imshow(color_binary)
+    color_binary = np.dstack((np.zeros_like(sxbinary), sxbinary, s_binary))
+    combined_binary = np.zeros_like(sxbinary)
+    combined_binary[(s_binary==1) | (sxbinary == 1)] = 1
 
-ax2.set_title('Combined S channel and gradient threshold')
-ax2.imshow(combined_binary, cmap='gray')
+    f, (ax1, ax2) = plt.subplots(1,2, figsize=(20,10))
+    ax1.set_title("stacked threshold")
+    ax1.imshow(color_binary)
 
-#plt.show()
+    ax2.set_title('Combined S channel and gradient threshold')
+    ax2.imshow(combined_binary, cmap='gray')
 
+    plt.show()
 
-#
-plt.close('all')
-#
+#color_and_gradient()
 
 def region_of_interest(img, vertices):
     mask = np.zeros_like(img)
@@ -169,7 +188,6 @@ def direction_threshold(gray, sobel_kernel = 3, thresh=(0, np.pi/2)):
     return dir_binary
 
 
-
 def pipeline(img):
     #Gaussian Blur
     kernel_size = 5
@@ -207,24 +225,27 @@ def pipeline(img):
 
     return color_binary
 
+
+show_img = False
 for i in range(1,7):
     fname = "test_images/test{}.jpg".format(i)
     image = cv2.imread(fname)
     result = pipeline(image)
 
-    f, (ax1, ax2) = plt.subplots(1,2, figsize=(24,9))
-    f.tight_layout()
+    if show_img:
 
-    ax1.imshow(image)
-    ax1.set_title('Origin Image', fontsize=40)
+        f, (ax1, ax2) = plt.subplots(1,2, figsize=(24,9))
+        f.tight_layout()
 
-    ax2.imshow(result, cmap='gray')
-    ax2.set_title('Pipline Result', fontsize=40)
+        ax1.imshow(image)
+        ax1.set_title('Origin Image', fontsize=40)
 
-    plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+        ax2.imshow(result, cmap='gray')
+        ax2.set_title('Pipline Result', fontsize=40)
 
+        plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
 
-#plt.show()
+        plt.show()
 
 #Warping
 
@@ -380,9 +401,7 @@ def find_lanes(n, image, x_window, lanes, \
             left = find_peaks(image, y_window_top, y_window_bottom, index1[i + 1, 0] - 200, index1[i + 1, 0] + 200)
             right = find_peaks(image, y_window_top, y_window_bottom, index1[i + 1, 1] - 200, index1[i + 1, 1] + 200)
             # Set the direction
-            print(index1[i + 1, 0], index1[i, 0])
             left = sanity_check_direction(left, index1[i + 1, 0], index1[i, 0])
-            print(index1[i + 1, 1], index1[i, 1])
             right = sanity_check_direction(right, index1[i + 1, 1], index1[i, 1])
             # Set the center
             center_pre = center
