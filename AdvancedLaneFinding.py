@@ -7,31 +7,18 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from scipy.signal import find_peaks_cwt
-
-
+import time
 ### Calibration
 
 
 #test
 fname = 'camera_cal/calibration{}.jpg'.format(2)
 img = cv2.imread(fname)
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 nx = 9
 ny = 6
 
-
-'''
-ret, corners = cv2.findChessboardCorners(gray, (nx, ny), None)
-
-if ret == True:
-    cv2.drawChessboardCorners(img, (nx, ny), corners, ret)
-    plt.imshow(img)
-    plt.title("Checkboard image with corners")
-    #plt.show()
-'''
-
-# find chessboard corners
-
+#Test to find chessboard corners
 
 def test_find_chessboard_corners(img,show_img):
     objpoints_tmp = []
@@ -49,14 +36,15 @@ def test_find_chessboard_corners(img,show_img):
         objpoints_tmp.append(objp)
         if show_img:
             img = cv2.drawChessboardCorners(img, (nx, ny), corners, ret)
-            plt.imshow(img)
-            plt.show()
+            #plt.imshow(img)
+            #plt.show()
+            plt.savefig("tmp/test_find_chessboard_corners.jpg")
     else:
         print("ret == False")
 
     return objpoints_tmp, imgpoints_tmp
 
-objpoints, imgpoints = test_find_chessboard_corners(img,False)
+objpoints, imgpoints = test_find_chessboard_corners(img,True)
 
 #camera calibration, undistort
 def test_calibration_undistort(img, show_img):
@@ -154,20 +142,25 @@ def region_of_interest(img, vertices):
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
 
-def abs_sobel_thresh(gray, orient='x', sobel_kernel = 3, thresh = (0,255)):
+
+#Sobel threshold
+def threshold_abs_sobel(gray, orient='x', sobel_kernel = 3, thresh = (0, 255)):
     if orient == 'x':
         sobel = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     elif orient == 'y':
         sobel = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
 
+    #Absolute sobel value
     sobel = np.absolute(sobel)
 
+    #Scaled Sobel value
     scaled_sobel = np.uint8(255*sobel / np.max((sobel)))
     binary_output = np.zeros_like(scaled_sobel)
     binary_output[(scaled_sobel > thresh[0]) & (scaled_sobel < thresh[1])] = 1
     return binary_output
 
-def mag_thresh(gray, sobel_kernel = 3, mag_thresh = (0,255)):
+#Mag threshold
+def threshold_mag(gray, sobel_kernel = 3, mag_thresh = (0, 255)):
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize = sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize = sobel_kernel)
     sobel = np.sqrt(sobelx ** 2 + sobely ** 2)
@@ -176,14 +169,19 @@ def mag_thresh(gray, sobel_kernel = 3, mag_thresh = (0,255)):
     binary_output[(scaled_sobel > mag_thresh[0]) & (scaled_sobel < mag_thresh[1])] = 1
     return binary_output
 
-def direction_threshold(gray, sobel_kernel = 3, thresh=(0, np.pi/2)):
+#Define a function to threshold an image for a given range and Sobel kernel
+def threshold_direction(gray, sobel_kernel = 3, thresh=(0, np.pi / 2)):
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize = sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize =  sobel_kernel)
 
-    with np.errstate(divide='ignore', invalid='ignore'):
+    try:
         absgraddir = np.absolute(np.arctan(sobely / sobelx))
         dir_binary = np.zeros_like(absgraddir)
         dir_binary[(absgraddir > thresh[0]) & (absgraddir < thresh[1])] = 1
+    except ZeroDivisionError:
+        print("zero division error in threshold direction")
+    except:
+        print("Other errors in threshold direction")
 
     return dir_binary
 
@@ -200,10 +198,10 @@ def pipeline(img):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     #sobel kernel
     ksize = 7
-    gradx = abs_sobel_thresh(gray, orient = 'x', sobel_kernel=ksize, thresh=(10,255))
-    grady = abs_sobel_thresh(gray, orient = 'y', sobel_kernel=ksize, thresh =(60,255))
-    mag_binary = mag_thresh(gray, sobel_kernel=ksize, mag_thresh=(40,255))
-    dir_binary = direction_threshold(gray, sobel_kernel=ksize, thresh=(.65, 1.05))
+    gradx = threshold_abs_sobel(gray, orient ='x', sobel_kernel=ksize, thresh=(10, 255))
+    grady = threshold_abs_sobel(gray, orient ='y', sobel_kernel=ksize, thresh =(60, 255))
+    mag_binary = threshold_mag(gray, sobel_kernel=ksize, mag_thresh=(40, 255))
+    dir_binary = threshold_direction(gray, sobel_kernel=ksize, thresh=(.65, 1.05))
     combined = np.zeros_like(dir_binary)
     combined[ ((gradx == 1) & (grady == 1)) |  ((mag_binary == 1) & (dir_binary == 1)) ] = 1
     s_binary = np.zeros_like(combined)
@@ -227,8 +225,10 @@ def pipeline(img):
 
 
 show_img = False
+#Process the test images
 for i in range(1,7):
-    fname = "test_images/test{}.jpg".format(i)
+    fname_short = "test{}.jpg".format(i)
+    fname = "test_images/" + fname_short
     image = cv2.imread(fname)
     result = pipeline(image)
 
@@ -241,11 +241,13 @@ for i in range(1,7):
         ax1.set_title('Origin Image', fontsize=40)
 
         ax2.imshow(result, cmap='gray')
-        ax2.set_title('Pipline Result', fontsize=40)
+        ax2.set_title('Result', fontsize=40)
 
         plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
 
         plt.show()
+
+
 
 #Warping
 
@@ -261,7 +263,10 @@ def corners_unwarp(img, nx, ny , mtx, dist):
     offset2 = 0
     offset3 = 0
 
-    img_size = (gray.shape[1], gray.shape[0])
+    #gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    #img_size = (gray.shape[1], gray.shape[0])
+    img_size = (img.shape[1], img.shape[0])
     src = np.float32(area_of_interest)
     dst = np.float32([[offset1, offset3], [img_size[0] - offset1, offset3], [img_size[0] - offset1, img_size[1] - offset2], [offset1, img_size[1]-offset2]])
 
@@ -532,7 +537,6 @@ def process_image(image):
 
 
 #Process Image
-import time
 
 x_values = [area_of_interest[0][0], area_of_interest[1][0], area_of_interest[2][0], area_of_interest[3][0], area_of_interest[0][0]]
 y_values = [area_of_interest[0][1], area_of_interest[1][1], area_of_interest[2][1], area_of_interest[3][1], area_of_interest[0][1]]
@@ -542,7 +546,8 @@ for i in range(1,7):
     left_lane = Line()
     right_lane = Line()
 
-    fname = "test_images/test{}.jpg".format(i)
+    fname_short = "test{}.jpg".format(i)
+    fname = "test_images/" + fname_short
 
     img_raw = cv2.imread(fname)
     img = pipeline(img_raw)
@@ -581,7 +586,12 @@ for i in range(1,7):
 
     plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
 
-    plt.show()
+    # Save processed test image into output images folder
+    plt.savefig("output_images/processed_" + fname_short)
+
+    #plt.show()
+    #time.sleep(3)
+    plt.close()
 
 
 ##Video
@@ -592,7 +602,7 @@ from IPython.display import HTML
 # Set up lines for left and right
 left_lane = Line()
 right_lane = Line()
-white_output = 'white.mp4'
+white_output = 'project_video_processed.mp4'
 clip1 = VideoFileClip("project_video.mp4")
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 white_clip.write_videofile(white_output, audio=False)
