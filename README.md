@@ -10,6 +10,8 @@
 Result of the image with distortion correction applied.
 
 
+![Calibrated Camera](./tmp/test_find_chessboard_corners.jpg)
+
 * Use color transforms, gradients, etc., to create a thresholded binary image.
 
 Implement sobel threshold, mag threshold and direction threshold. Combine all the 3 threshold in the project.
@@ -21,6 +23,16 @@ Apply crop a region of interest area, remove the noisey area.
 * Determine the curvature of the lane and vehicle position with respect to center.
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
+
+![Processed Image 1](./output_images/processed_test1.jpg)
+![Processed Image 2](./output_images/processed_test2.jpg)
+![Processed Image 3](./output_images/processed_test3.jpg)
+![Processed Image 4](./output_images/processed_test4.jpg)
+![Processed Image 5](./output_images/processed_test5.jpg)
+![Processed Image 6](./output_images/processed_test6.jpg)
+
+* Video
+![Processed Video](./project_video_processed.mp4)
 
 
 #####################
