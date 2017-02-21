@@ -17,9 +17,23 @@ Result of the image with distortion correction applied.
 Implement sobel threshold, mag threshold and direction threshold. Combine all the 3 threshold in the project.
 
 Apply crop a region of interest area, remove the noisey area.
+![Interest Area](./output_images/area_interested.png)
 
 * Apply a perspective transform to rectify binary image ("birds-eye view").
 * Detect lane pixels and fit to find the lane boundary.
+
+- Corner unwarp
+- Find lanes from three repeated procedures with different window values
+- find_lanes function will detect left and right lanes from the warped image.
+- # Find the historgram from the image inside the window
+- Set the direction
+- Stable check.
+  After calculate the direction, check if the new calculated direction is stable or not. If not stable, calculate from previous result.
+- Set the center
+-  Make sure the distance between left and right laens are wide enough
+- Find the coefficients of polynomials
+- Find curvatures
+
 * Determine the curvature of the lane and vehicle position with respect to center.
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.

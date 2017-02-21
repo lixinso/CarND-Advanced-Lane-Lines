@@ -36,7 +36,7 @@ def test_find_chessboard_corners(img,show_img):
         objpoints_tmp.append(objp)
         if show_img:
             img = cv2.drawChessboardCorners(img, (nx, ny), corners, ret)
-            #plt.imshow(img)
+            plt.imshow(img)
             #plt.show()
             plt.savefig("tmp/test_find_chessboard_corners.jpg")
     else:
@@ -185,6 +185,19 @@ def threshold_direction(gray, sobel_kernel = 3, thresh=(0, np.pi / 2)):
 
     return dir_binary
 
+def define_vertices(img):
+    imshape = img.shape
+    left_bottom = (100, imshape[0])
+    right_bottom = (imshape[1]-20, imshape[0])
+    apex1 = (610, 410)
+    apex2 = (680, 410)
+    inner_left_bottom = (310, imshape[0])
+    inner_right_bottom = (1150, imshape[1])
+    inner_apex1 = (700, 480)
+    inner_apex2 = (650, 480)
+    vertices = np.array([[left_bottom, apex1, apex2, right_bottom, inner_right_bottom, inner_apex1, inner_apex2, inner_left_bottom]], dtype=np.int32)
+
+    return vertices
 
 def pipeline(img):
     #Gaussian Blur
@@ -198,27 +211,29 @@ def pipeline(img):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     #sobel kernel
     ksize = 7
+
+    #Apply sobel threshold
     gradx = threshold_abs_sobel(gray, orient ='x', sobel_kernel=ksize, thresh=(10, 255))
     grady = threshold_abs_sobel(gray, orient ='y', sobel_kernel=ksize, thresh =(60, 255))
+
+    #Apply mag threshold
     mag_binary = threshold_mag(gray, sobel_kernel=ksize, mag_thresh=(40, 255))
+
+    #Apply direction threshold
     dir_binary = threshold_direction(gray, sobel_kernel=ksize, thresh=(.65, 1.05))
+
+    #Combine the 3 thresholds
     combined = np.zeros_like(dir_binary)
     combined[ ((gradx == 1) & (grady == 1)) |  ((mag_binary == 1) & (dir_binary == 1)) ] = 1
+
+
     s_binary = np.zeros_like(combined)
     s_binary[(s>160) & (s<255)] = 1
     color_binary = np.zeros_like(combined)
     color_binary[(s_binary > 0) | (combined > 0)] = 1
-    imshape = img.shape
-    left_bottom = (100, imshape[0])
-    right_bottom = (imshape[1]-20, imshape[0])
-    apex1 = (610, 410)
-    apex2 = (680, 410)
-    inner_left_bottom = (310, imshape[0])
-    inner_right_bottom = (1150, imshape[1])
-    inner_apex1 = (700, 480)
-    inner_apex2 = (650, 480)
-    vertices = np.array([[left_bottom, apex1, apex2, right_bottom, inner_right_bottom, inner_apex1, inner_apex2, inner_left_bottom]], dtype=np.int32)
 
+    #define vertices, and crop region of interest
+    vertices = define_vertices(img)
     color_binary = region_of_interest(color_binary, vertices)
 
     return color_binary
@@ -230,6 +245,8 @@ for i in range(1,7):
     fname_short = "test{}.jpg".format(i)
     fname = "test_images/" + fname_short
     image = cv2.imread(fname)
+
+    #Process image by pipeline
     result = pipeline(image)
 
     if show_img:
@@ -241,20 +258,18 @@ for i in range(1,7):
         ax1.set_title('Origin Image', fontsize=40)
 
         ax2.imshow(result, cmap='gray')
-        ax2.set_title('Result', fontsize=40)
+        ax2.set_title('Processed', fontsize=40)
 
         plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
 
         plt.show()
-
-
 
 #Warping
 
 image_shape = image.shape
 print("Image Shape = ", image_shape)
 
-
+#area_of_interest = [[150 + 430, 460], [1150 - 440, 460], [1150, 720], [150, 720]]
 area_of_interest = [[150 + 430, 460], [1150 - 440, 460], [1150, 720], [150, 720]]
 
 def corners_unwarp(img, nx, ny , mtx, dist):
@@ -302,6 +317,7 @@ class Line():
 
         self.windows = np.ones((3,12))*-1
 
+#Calculate curvature
 def calculate_curvature(yvals, fitx):
     y_eval = np.max(yvals)
     ym_per_pix = 30/ 720
@@ -310,12 +326,13 @@ def calculate_curvature(yvals, fitx):
     curverad = ((1+(2*fit_cr[0]*y_eval + fit_cr[1]) ** 2)**1.5) / np.absolute(2*fit_cr[0])
     return curverad
 
+#
 def find_position(pts):
     position = image_shape[1] / 2
     left = np.min( pts[ (pts[:,1] < position) & (pts[:,0] > 700)][:,1])
     right = np.max(pts[ (pts[:,1] > position) & (pts[:,0] > 700)][:,1])
     center = (left + right) / 2
-    xm_per_pix = 3.7 / 700
+    xm_per_pix = 3.7 / 700   # meters per pixel on x
     return (position - center) * xm_per_pix
 
 def find_nearest(array,value):
@@ -370,14 +387,14 @@ def sanity_check(lane, curverad, fitx, fit):
             lane.radius_of_curvature = curverad
     return fitx
 
-# Sanity check for the direction
-def sanity_check_direction(right, right_pre, right_pre2):
-    # If the direction is ok then pass
-    if abs((right-right_pre) / (right_pre-right_pre2) - 1) < .2:
+# Sanity check for the direction, make sure the direction won't turbulent too much
+def stable_direction(right, right_pre1, right_pre2):
+    # If the direction not change too much
+    if abs((right-right_pre1) / (right_pre1-right_pre2) - 1) < .2:
         return right
-    # If not then compute the value from the previous values
+    # If not, then compute the value from the previous values
     else:
-        return right_pre + (right_pre - right_pre2)
+        return right_pre1 + (right_pre1 - right_pre2)
 
 # find_lanes function will detect left and right lanes from the warped image.
 # 'n' windows will be used to identify peaks of histograms
@@ -406,8 +423,8 @@ def find_lanes(n, image, x_window, lanes, \
             left = find_peaks(image, y_window_top, y_window_bottom, index1[i + 1, 0] - 200, index1[i + 1, 0] + 200)
             right = find_peaks(image, y_window_top, y_window_bottom, index1[i + 1, 1] - 200, index1[i + 1, 1] + 200)
             # Set the direction
-            left = sanity_check_direction(left, index1[i + 1, 0], index1[i, 0])
-            right = sanity_check_direction(right, index1[i + 1, 1], index1[i, 1])
+            left = stable_direction(left, index1[i + 1, 0], index1[i, 0])
+            right = stable_direction(right, index1[i + 1, 1], index1[i, 1])
             # Set the center
             center_pre = center
             center = (left + right) / 2
