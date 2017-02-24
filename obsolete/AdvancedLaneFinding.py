@@ -186,27 +186,28 @@ def threshold_direction(gray, sobel_kernel = 3, thresh=(0, np.pi / 2)):
     return dir_binary
 
 def define_vertices(img):
-    imshape = img.shape
-    left_bottom = (100, imshape[0])
-    right_bottom = (imshape[1]-20, imshape[0])
-    apex1 = (610, 410)
-    apex2 = (680, 410)
-    inner_left_bottom = (310, imshape[0])
-    inner_right_bottom = (1150, imshape[1])
-    inner_apex1 = (700, 480)
-    inner_apex2 = (650, 480)
+    imshape = img.shape #720, 1280, 3
+    left_bottom = (100, imshape[0])             #100, 720
+    right_bottom = (imshape[1]-20, imshape[0])  #1260,720
+    apex1 = (610, 410)                          #610, 410
+    apex2 = (680, 410)                          #680, 410
+    inner_left_bottom = (310, imshape[0])       #300, 720
+    inner_right_bottom = (1150, imshape[1])     #1150,1280 #1150,720
+    inner_apex1 = (700, 480)                    #700, 480
+    inner_apex2 = (650, 480)                    #650, 480
     vertices = np.array([[left_bottom, apex1, apex2, right_bottom, inner_right_bottom, inner_apex1, inner_apex2, inner_left_bottom]], dtype=np.int32)
 
     return vertices
 
 def pipeline(img):
-    #Gaussian Blur
+    #Use kernel size 5 Gaussian Blur to smooth the image
     kernel_size = 5
     img = cv2.GaussianBlur(img,(kernel_size, kernel_size),0)
 
     #HLS color space
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
     s = hls[:,:,2]
+
     #Grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     #sobel kernel
@@ -270,7 +271,8 @@ image_shape = image.shape
 print("Image Shape = ", image_shape)
 
 #area_of_interest = [[150 + 430, 460], [1150 - 440, 460], [1150, 720], [150, 720]]
-area_of_interest = [[150 + 430, 460], [1150 - 440, 460], [1150, 720], [150, 720]]
+#The area ahead of the car
+area_of_interest = [[580, 460], [710, 460], [1150, 720], [150, 720]]
 
 def corners_unwarp(img, nx, ny , mtx, dist):
     undist = cv2.undistort(img, mtx, dist, None, mtx)
@@ -283,8 +285,8 @@ def corners_unwarp(img, nx, ny , mtx, dist):
     #img_size = (gray.shape[1], gray.shape[0])
     img_size = (img.shape[1], img.shape[0])
     src = np.float32(area_of_interest)
+    #                [200, 0],             [1080,0],                         [1080, 720] ,                                     [200, 720]
     dst = np.float32([[offset1, offset3], [img_size[0] - offset1, offset3], [img_size[0] - offset1, img_size[1] - offset2], [offset1, img_size[1]-offset2]])
-
     M = cv2.getPerspectiveTransform(src, dst)
     MinV = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(undist, M, img_size)
@@ -400,6 +402,10 @@ def stable_direction(right, right_pre1, right_pre2):
 # 'n' windows will be used to identify peaks of histograms
 def find_lanes(n, image, x_window, lanes, \
                left_lane_x, left_lane_y, right_lane_x, right_lane_y, window_ind):
+    plt.show()
+    plt.imshow(image)
+    plt.show()
+
     # 'n' windows will be used to identify peaks of histograms
     # Set index1. This is used for placeholder.
     index1 = np.zeros((n + 1, 2))

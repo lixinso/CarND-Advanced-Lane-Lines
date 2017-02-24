@@ -325,7 +325,8 @@ def find_lanes(binary_warped, img, perspective_Minv):
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
 
-    left_line_window1 = np.array([np.transpose(np.vstack([left_fitx - margin, ploty]))])
+    '''
+    left_line_window1 = np.array(          [np.transpose(np.vstack([left_fitx - margin, ploty]))])
     left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([left_fitx + margin, ploty])))])
     left_line_pts = np.hstack((left_line_window1, left_line_window2))
 
@@ -335,8 +336,15 @@ def find_lanes(binary_warped, img, perspective_Minv):
 
     cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
     cv2.fillPoly(window_img, np.int_([right_line_pts]), (0, 255, 0))
-    result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
+    '''
+
+    left_line_window1 = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    right_line_pts = np.hstack((left_line_window1, right_line_window2))
+    cv2.fillPoly(window_img, np.int_([right_line_pts]), (0, 255, 0))
+
+    result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
     '''
     plt.imshow(result)
@@ -404,7 +412,7 @@ for i in range(1,7):
 
     rawimg = cv2.imread(fname)
 
-    process_image(rawimg)
+    image_color = process_image(rawimg)
 
     #plt.imshow(image_color)
     #plt.show()
