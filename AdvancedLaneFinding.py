@@ -310,6 +310,19 @@ def find_lanes(binary_warped, img, perspective_Minv):
     left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
     right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
+    y_eval = np.max(ploty)
+    ym_per_pix = 30 / 720
+    xm_per_pix = 3.7 / 700
+    left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+    left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
+        2 * left_fit_cr[0])
+    right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        2 * right_fit_cr[0])
+
+    print(left_curverad, 'm', right_curverad, 'm')
+
+
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzeroy[right_lane_inds]] = [0, 0, 255]
 
@@ -385,8 +398,10 @@ def find_lanes(binary_warped, img, perspective_Minv):
     newwarp = newwarp.astype(np.uint8)
     result2 = cv2.addWeighted(img, 1, newwarp, 0.8, 0)
 
-
-
+    #draw curveness
+    text = "Curvature: {} m".format(int(left_curverad))
+    font = cv2.FONT_HERSHEY_COMPLEX
+    cv2.putText(result2, text, (100, 100), font, 1, (255, 255, 255), 2)
     #plt.imshow(img)
     #plt.show()
 
