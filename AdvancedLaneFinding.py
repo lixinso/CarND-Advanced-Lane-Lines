@@ -461,5 +461,6 @@ from moviepy.editor import VideoFileClip
 white_output = 'project_video_processed.mp4'
 clip1 = VideoFileClip("project_video.mp4")
 white_clip = clip1.fl_image(process_image)
-#white_clip.show()
+print(type(white_clip))
+white_clip.preview()
 white_clip.write_videofile(white_output, audio=False)
