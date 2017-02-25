@@ -245,6 +245,10 @@ def find_lanes(binary_warped, img, perspective_Minv):
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
+
+    #plt.plot(histogram * 1e305)
+
+
     nwindows = 9
     window_height = np.int(binary_warped.shape[0] / nwindows)
     nonzero = binary_warped.nonzero()
@@ -411,7 +415,7 @@ def find_lanes(binary_warped, img, perspective_Minv):
     #plt.imshow(result2)
     #plt.show()
 
-    return result2
+    return result2,histogram
 
 def fit_lanes(top_down, img, perspective_Minv):
     return  find_lanes(top_down, img, perspective_Minv)
@@ -438,6 +442,12 @@ def process_image(rawimg):
     #a, b, c, lx, ly, rx, ry, curvature = fit_lanes(top_down, rawimg,perspective_Minv)
     #image_color = draw_poly(image, top_down, a, b, c, lx, ly, rx, ry, perspective_Minv, curvature)
 
+def process_image_for_image(rawimg):
+    return process_image(rawimg)
+
+def process_image_for_video(rawimg):
+    return process_image(rawimg)[0]
+
 for i in range(1,7):
 
     left_lane = Line()
@@ -448,7 +458,20 @@ for i in range(1,7):
 
     rawimg = cv2.imread(fname)
 
-    image_color = process_image(rawimg)
+    image_color, histogram = process_image_for_image(rawimg)
+
+
+    #draw image
+    f, (ax1, ax2) = plt.subplots(1,2,figsize=(24,12))
+    f.tight_layout()
+
+    ax1.set_title('Result', fontsize = 20)
+    ax1.imshow(image_color)
+    ax1.set_title('Histogram', fontsize = 20)
+    ax2.plot(histogram * 1e305)
+    plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+    plt.savefig("output_images/new_processed_" + fname_short)
+    plt.close()
 
     #plt.imshow(image_color)
     #plt.show()
@@ -460,7 +483,7 @@ from moviepy.editor import VideoFileClip
 
 white_output = 'project_video_processed.mp4'
 clip1 = VideoFileClip("project_video.mp4")
-white_clip = clip1.fl_image(process_image)
+white_clip = clip1.fl_image(process_image_for_video)
 print(type(white_clip))
 white_clip.preview()
 white_clip.write_videofile(white_output, audio=False)
