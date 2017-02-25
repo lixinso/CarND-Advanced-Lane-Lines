@@ -229,6 +229,14 @@ def test_calibration_undistort(img, show_img):
 
 dst,mtx,dist = test_calibration_undistort(img,False)
 
+# Sanity check for the direction, make sure the direction won't turbulent too much
+def stable_direction(right, right_pre1, right_pre2):
+    # If the direction not change too much
+    if abs((right-right_pre1) / (right_pre1-right_pre2) - 1) < .2:
+        return right
+    # If not, then compute the value from the previous values
+    else:
+        return right_pre1 + (right_pre1 - right_pre2)
 
 def find_lanes(binary_warped, img, perspective_Minv):
     histogram = np.sum(binary_warped[binary_warped.shape[0] / 2:, :], axis=0)
@@ -245,6 +253,13 @@ def find_lanes(binary_warped, img, perspective_Minv):
 
     leftx_current = leftx_base
     rightx_current = rightx_base
+
+    leftx_current_pre1 = leftx_current
+    leftx_current_pre2 = leftx_current
+    rightx_current_pre1 = rightx_current
+    rightx_current_pre2 = rightx_current
+
+
 
     margin = 100
     minpix = 50
@@ -271,8 +286,14 @@ def find_lanes(binary_warped, img, perspective_Minv):
 
         if len(good_left_inds) > minpix:
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+            leftx_current = stable_direction(leftx_current, leftx_current_pre1, leftx_current_pre2)
+            leftx_current_pre1 = leftx_current
+            leftx_current_pre2 = leftx_current_pre1
         if len(good_right_inds) > minpix:
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+            rightx_current = stable_direction(rightx_current, rightx_current_pre1, rightx_current_pre2)
+            rightx_current_pre1 = rightx_current
+            rightx_current_pre2 = rightx_current_pre1
 
     left_lane_inds = np.concatenate(left_lane_inds)
     right_lane_inds = np.concatenate(right_lane_inds)
