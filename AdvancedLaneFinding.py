@@ -341,20 +341,32 @@ def find_lanes(binary_warped, img, perspective_Minv, source):
     #right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
     #    2 * right_fit_cr[0])
 
-    left_curverad = ((1 + (2 * left_fit_cr[0] * ploty[-1]  * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
+    left_curverad =  ((1 + (2 * left_fit_cr[0]  * ploty[-1]  * ym_per_pix  + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * left_fit_cr[0])
-    right_curverad = ((1 + (2 * right_fit_cr[0] * ploty[-1] * ym_per_pix  + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+    right_curverad = ((1 + (2 * right_fit_cr[0] * ploty[-1] *  ym_per_pix  + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
+
+    #Avoid Jump of curveness
+    if len(curveness_left_previous) > 1:
+        last_curveness = curveness_left_previous[-1]
+        if left_curverad > last_curveness + 1000:
+            print("left_curverad " + str(left_curverad) + " >  last_curveness " + str(last_curveness) + " + 100")
+            left_curverad = last_curveness + 1000
+
+    #if left_curverad > 10000:
+    #    print("left_curverad > 10000")
+    #    left_curverad = 10000
 
     curveness_left_previous.append(left_curverad)
     curveness_right_previous.append(right_curverad)
 
-    average_n = min(len(curveness_left_previous), 100)
+    average_n = min(len(curveness_left_previous), 30)
     left_curverad_avg = sum(curveness_left_previous[-average_n:]) / average_n
     right_curverad_avg = sum(curveness_right_previous[-average_n:]) / average_n
 
     print(left_curverad_avg, 'm', right_curverad_avg, 'm')
-
+    if left_curverad_avg > 10000:
+        print("left_curverad > 10000")
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzeroy[right_lane_inds]] = [0, 0, 255]
@@ -537,5 +549,5 @@ white_output = 'project_video_processed.mp4'
 clip1 = VideoFileClip("project_video.mp4")
 white_clip = clip1.fl_image(process_image_for_video)
 print(type(white_clip))
-white_clip.preview()
+#white_clip.preview()
 white_clip.write_videofile(white_output, audio=False)
