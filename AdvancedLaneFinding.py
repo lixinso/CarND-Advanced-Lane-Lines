@@ -245,9 +245,7 @@ def find_lanes(binary_warped, img, perspective_Minv):
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
-
     #plt.plot(histogram * 1e305)
-
 
     nwindows = 9
     window_height = np.int(binary_warped.shape[0] / nwindows)
@@ -323,6 +321,8 @@ def find_lanes(binary_warped, img, perspective_Minv):
         2 * left_fit_cr[0])
     right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
+
+
 
     print(left_curverad, 'm', right_curverad, 'm')
 
@@ -402,10 +402,20 @@ def find_lanes(binary_warped, img, perspective_Minv):
     newwarp = newwarp.astype(np.uint8)
     result2 = cv2.addWeighted(img, 1, newwarp, 0.8, 0)
 
+    camera_center = (left_fitx[-1] + right_fitx[-1]) / 2
+    center_diff = (camera_center - result.shape[1]/2) * xm_per_pix
+    side_pos = 'left'
+    if center_diff <= 0:
+        side_pos = 'right'
+
+
     #draw curveness
     text = "Curvature: {} m".format(int(left_curverad))
     font = cv2.FONT_HERSHEY_COMPLEX
     cv2.putText(result2, text, (100, 100), font, 1, (255, 255, 255), 2)
+
+    text_offcenter = "Vehicle is " + str(abs(round(center_diff,3))) + ' m ' + side_pos + ' of center '
+    cv2.putText(result2, text_offcenter, (100, 150), font, 1, (255, 255, 255), 2)
     #plt.imshow(img)
     #plt.show()
 
@@ -460,7 +470,6 @@ for i in range(1,7):
 
     image_color, histogram = process_image_for_image(rawimg)
 
-
     #draw image
     f, (ax1, ax2) = plt.subplots(1,2,figsize=(24,12))
     f.tight_layout()
@@ -476,9 +485,11 @@ for i in range(1,7):
     #plt.imshow(image_color)
     #plt.show()
 
-
 from moviepy.editor import VideoFileClip
 #import pygame
+
+
+
 
 
 white_output = 'project_video_processed.mp4'
