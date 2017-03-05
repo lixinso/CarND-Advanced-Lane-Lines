@@ -336,9 +336,14 @@ def find_lanes(binary_warped, img, perspective_Minv, source):
 
 
     #curveness
-    left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
+    #left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
+    #    2 * left_fit_cr[0])
+    #right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+    #    2 * right_fit_cr[0])
+
+    left_curverad = ((1 + (2 * left_fit_cr[0] * ploty[-1]  * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
         2 * left_fit_cr[0])
-    right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+    right_curverad = ((1 + (2 * right_fit_cr[0] * ploty[-1] * ym_per_pix  + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
 
     curveness_left_previous.append(left_curverad)
