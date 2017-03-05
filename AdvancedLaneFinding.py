@@ -7,6 +7,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import time
+from queue import *
+
 
 # Define a class to receive the characteristics of each line detection
 class Line():
@@ -238,7 +240,21 @@ def stable_direction(right, right_pre1, right_pre2):
     else:
         return right_pre1 + (right_pre1 - right_pre2)
 
-def find_lanes(binary_warped, img, perspective_Minv):
+
+def find_lanes(binary_warped, img, perspective_Minv, source):
+    global curveness_left_previous
+    global curveness_right_previous
+    global center_diff_previous
+    try:
+        curveness_left_previous
+        curveness_right_previous
+        center_diff_previous
+
+    except NameError:
+        curveness_left_previous = []
+        curveness_right_previous = []
+        center_diff_previous = []
+
     histogram = np.sum(binary_warped[binary_warped.shape[0] / 2:, :], axis=0)
     out_img = np.dstack((binary_warped, binary_warped, binary_warped)) * 255
     midpoint = np.int(histogram.shape[0] / 2)
@@ -317,14 +333,22 @@ def find_lanes(binary_warped, img, perspective_Minv):
     xm_per_pix = 3.7 / 700
     left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
     right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+
+
+    #curveness
     left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) * 1.5) / np.absolute(
         2 * left_fit_cr[0])
     right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
 
+    curveness_left_previous.append(left_curverad)
+    curveness_right_previous.append(right_curverad)
 
+    average_n = min(len(curveness_left_previous), 100)
+    left_curverad_avg = sum(curveness_left_previous[-average_n:]) / average_n
+    right_curverad_avg = sum(curveness_right_previous[-average_n:]) / average_n
 
-    print(left_curverad, 'm', right_curverad, 'm')
+    print(left_curverad_avg, 'm', right_curverad_avg, 'm')
 
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
@@ -404,17 +428,21 @@ def find_lanes(binary_warped, img, perspective_Minv):
 
     camera_center = (left_fitx[-1] + right_fitx[-1]) / 2
     center_diff = (camera_center - result.shape[1]/2) * xm_per_pix
+    center_diff_previous.append(center_diff)
+    average_n = min(len(curveness_left_previous), 10)
+    center_diff_avg = sum(center_diff_previous[-average_n:]) / average_n
     side_pos = 'left'
-    if center_diff <= 0:
+    if center_diff_avg <= 0:
         side_pos = 'right'
 
 
     #draw curveness
-    text = "Curvature: {} m".format(int(left_curverad))
+    text = "Curvature: {} m".format(int(left_curverad_avg))
     font = cv2.FONT_HERSHEY_COMPLEX
     cv2.putText(result2, text, (100, 100), font, 1, (255, 255, 255), 2)
 
-    text_offcenter = "Vehicle is " + str(abs(round(center_diff,3))) + ' m ' + side_pos + ' of center '
+    #draw off center
+    text_offcenter = "Vehicle is " + str(abs(round(center_diff_avg,3))) + ' m ' + side_pos + ' of center '
     cv2.putText(result2, text_offcenter, (100, 150), font, 1, (255, 255, 255), 2)
     #plt.imshow(img)
     #plt.show()
@@ -425,16 +453,24 @@ def find_lanes(binary_warped, img, perspective_Minv):
     #plt.imshow(result2)
     #plt.show()
 
+    if source == "from_image":
+
+        curveness_left_previous = []
+        curveness_right_previous = []
+        center_diff_previous = []
+
+
+
     return result2,histogram
 
-def fit_lanes(top_down, img, perspective_Minv):
-    return  find_lanes(top_down, img, perspective_Minv)
+#def fit_lanes(top_down, img, perspective_Minv):
+#    return  find_lanes(top_down, img, perspective_Minv)
 
 
 
 ''''''
 
-def process_image(rawimg):
+def process_image(rawimg, source):
     img = pipeline(rawimg)
 
     top_down, perspective_M, perspective_Minv = corners_unwarp(img, nx, ny, mtx, dist)
@@ -448,15 +484,15 @@ def process_image(rawimg):
     #plt.imshow(top_down)
     #plt.show()
 
-    return fit_lanes(top_down, rawimg, perspective_Minv)
+    return find_lanes(top_down, rawimg, perspective_Minv, source)
     #a, b, c, lx, ly, rx, ry, curvature = fit_lanes(top_down, rawimg,perspective_Minv)
     #image_color = draw_poly(image, top_down, a, b, c, lx, ly, rx, ry, perspective_Minv, curvature)
 
 def process_image_for_image(rawimg):
-    return process_image(rawimg)
+    return process_image(rawimg,"from_image")
 
 def process_image_for_video(rawimg):
-    return process_image(rawimg)[0]
+    return process_image(rawimg,"from_video")[0]
 
 for i in range(1,7):
 
